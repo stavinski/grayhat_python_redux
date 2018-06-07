@@ -1,2 +1,3 @@
-# grayhat_python_redux
-Code Based off the book 
+# Gray Hat Python Redux
+
+Code Based off the book but to bring it more upto date, i.e. newwer libs dealing with x64 etc... 
