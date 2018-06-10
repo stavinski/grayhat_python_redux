@@ -70,14 +70,14 @@ class debugger():
         else:    
             print "[*] Error with error code %d." % kernel32.GetLastError()
 
-    def open_process(self,pid):
+    def open_process(self,  pid):
         
         # PROCESS_ALL_ACCESS = 0x0x001F0FFF
         h_process = kernel32.OpenProcess(PROCESS_ALL_ACCESS,False,pid) 
         
         return h_process
     
-    def attach(self,pid):
+    def attach(self, pid):
         
         self.h_process = self.open_process(pid)
         
@@ -102,7 +102,7 @@ class debugger():
         debug_event    = DEBUG_EVENT()
         continue_status = DBG_CONTINUE
         
-        if kernel32.WaitForDebugEvent(byref(debug_event),100):
+        if kernel32.WaitForDebugEvent(byref(debug_event), 100):
             # grab various information with regards to the current exception.
             self.h_thread          = self.open_thread(debug_event.dwThreadId)
             self.context           = self.get_thread_context(h_thread=self.h_thread)
@@ -110,7 +110,7 @@ class debugger():
             
                        
             print "Event Code: %d Thread ID: %d" % \
-                (debug_event.dwDebugEventCode,debug_event.dwThreadId)
+                (debug_event.dwDebugEventCode, debug_event.dwThreadId)
             
             if debug_event.dwDebugEventCode == EXCEPTION_DEBUG_EVENT:
                 self.exception = debug_event.u.Exception.ExceptionRecord.ExceptionCode
@@ -174,22 +174,25 @@ class debugger():
             return thread_list
         else:
             return False
-        
-    def get_thread_context (self, thread_id=None,h_thread=None):
-        
-        context = CONTEXT()
+
+    def get_thread_context(self, thread_id=None, h_thread=None):
+
+        context = CONTEXT64()
+
         context.ContextFlags = CONTEXT_FULL | CONTEXT_DEBUG_REGISTERS
-        
+
         # Obtain a handle to the thread
         if h_thread is None:
             self.h_thread = self.open_thread(thread_id)
-                        
-        if kernel32.GetThreadContext(self.h_thread, byref(context)):
-            
-            return context 
+
+        if kernel32.Wow64GetThreadContext(self.h_thread, byref(context)):
+            return context
         else:
-            return False
-    
+            if kernel32.GetThreadContext(self.h_thread, byref(context)):
+                return context
+            else:
+                return None
+
     def read_process_memory(self,address,length):
         
         data         = ""

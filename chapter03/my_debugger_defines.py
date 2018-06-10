@@ -8,7 +8,8 @@ LPTSTR    = POINTER(c_char)
 PVOID     = c_void_p
 UINT_PTR  = c_ulong
 SIZE_T    = c_ulong
-DWORD64   = c_uint64
+DWORD64   = c_ulonglong
+LONGLONG  = c_longlong
 
 # Constants
 DEBUG_PROCESS         = 0x00000001
@@ -221,12 +222,13 @@ class THREADENTRY32(Structure):
 # 64bit
 class M128A(Structure):
     _fields_ =[
-        ("High",    ULONG),
-        ("Low",     LONG)
+        ("High",    DWORD64),
+        ("Low",     LONGLONG)
     ]
 
 
 class XSAVE_FORMAT(Structure):
+    _pack_ = 1
     _fields_ = [
         ("ControlWord",         WORD),
         ("StatusWord",          WORD),
@@ -246,50 +248,8 @@ class XSAVE_FORMAT(Structure):
         ("Reserved4",           BYTE * 96),
     ]
 
-
-class CONTEXT64(Structure):
+class DUMMYSTRUCTNAME(Structure):
     _fields_ = [
-        ("P1Home",              DWORD64),
-        ("P2Home",              DWORD64),
-        ("P3Home",              DWORD64),
-        ("P4Home",              DWORD64),
-        ("P5Home",              DWORD64),
-        ("P6Home",              DWORD64),
-        ("ContextFlags",        DWORD),
-        ("MxCsr",               DWORD),
-        ("SegCs",               WORD),
-        ("SegDs",               WORD),
-        ("SegEs",               WORD),
-        ("SegFs",               WORD),
-        ("SegGs",               WORD),
-        ("SegSs",               WORD),
-        ("EFlags",              DWORD),
-        ("Dr0",                 DWORD64),
-        ("Dr1",                 DWORD64),
-        ("Dr2",                 DWORD64),
-        ("Dr3",                 DWORD64),
-        ("Dr4",                 DWORD64),
-        ("Dr5",                 DWORD64),
-        ("Dr6",                 DWORD64),
-        ("Dr7",                 DWORD64),
-        ("Rax",                 DWORD64),
-        ("Rcx",                 DWORD64),
-        ("Rdx",                 DWORD64),
-        ("Rbx",                 DWORD64),
-        ("Rsp",                 DWORD64),
-        ("Rbp",                 DWORD64),
-        ("Rsi",                 DWORD64),
-        ("Rdi",                 DWORD64),
-        ("R8",                  DWORD64),
-        ("R9",                  DWORD64),
-        ("R10",                 DWORD64),
-        ("R11",                 DWORD64),
-        ("R12",                 DWORD64),
-        ("R13",                 DWORD64),
-        ("R14",                 DWORD64),
-        ("R15",                 DWORD64),
-        ("Rip",                 DWORD64),
-        ("FltSave",             XSAVE_FORMAT),
         ("Header",              M128A * 2),
         ("Legacy",              M128A * 8),
         ("Xmm0",                M128A),
@@ -308,13 +268,71 @@ class CONTEXT64(Structure):
         ("Xmm13",               M128A),
         ("Xmm14",               M128A),
         ("Xmm15",               M128A),
+    ]
+
+class DUMMYUNION(Union):
+    _fields_ = [
+        ("FltSave",             XSAVE_FORMAT),
+        ("DUMMYSTRUCT",          DUMMYSTRUCTNAME)
+    ]
+
+class CONTEXT64(Structure):
+    _pack_ = 16
+    _fields_ = [
+        ("P1Home",              DWORD64),
+        ("P2Home",              DWORD64),
+        ("P3Home",              DWORD64),
+        ("P4Home",              DWORD64),
+        ("P5Home",              DWORD64),
+        ("P6Home",              DWORD64),
+
+        ("ContextFlags",        DWORD),
+        ("MxCsr",               DWORD),
+
+        ("SegCs",               WORD),
+        ("SegDs",               WORD),
+        ("SegEs",               WORD),
+        ("SegFs",               WORD),
+        ("SegGs",               WORD),
+        ("SegSs",               WORD),
+        ("EFlags",              DWORD),
+
+        ("Dr0",                 DWORD64),
+        ("Dr1",                 DWORD64),
+        ("Dr2",                 DWORD64),
+        ("Dr3",                 DWORD64),
+        ("Dr6",                 DWORD64),
+        ("Dr7",                 DWORD64),
+
+        ("Rax",                 DWORD64),
+        ("Rcx",                 DWORD64),
+        ("Rdx",                 DWORD64),
+        ("Rbx",                 DWORD64),
+        ("Rsp",                 DWORD64),
+        ("Rbp",                 DWORD64),
+        ("Rsi",                 DWORD64),
+        ("Rdi",                 DWORD64),
+        ("R8",                  DWORD64),
+        ("R9",                  DWORD64),
+        ("R10",                 DWORD64),
+        ("R11",                 DWORD64),
+        ("R12",                 DWORD64),
+        ("R13",                 DWORD64),
+        ("R14",                 DWORD64),
+        ("R15",                 DWORD64),
+
+        ("Rip",                 DWORD64),
+
+        ("DebugControl", DWORD64),
+        ("LastBranchToRip", DWORD64),
+        ("LastBranchFromRip", DWORD64),
+        ("LastExpcetionToRip", DWORD64),
+        ("LastExpcetionFromRip", DWORD64),
+
+        ("DUMMYUNION",          DUMMYUNION),
+
         ("VectorRegister",      M128A * 26),
         ("VectorControl",       DWORD64),
-        ("DebugControl",        DWORD64),
-        ("LastBranchToRip",     DWORD64),
-        ("LastBranchFromRip",   DWORD64),
-        ("LastExpcetionToRip",  DWORD64),
-        ("LastExpcetionFromRip", DWORD64),
     ]
 
 # Supporting struct for the SYSTEM_INFO_UNION union
