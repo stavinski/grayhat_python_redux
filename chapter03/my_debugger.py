@@ -193,14 +193,24 @@ class debugger():
             else:
                 return None
 
-    def read_process_memory(self,address,length):
+    def set_thread_context(self, h_thread, context):
+        if not h_thread:
+            print "[!] no thread to set context on"
+            return
+
+        if not kernel32.Wow64SetThreadContext(h_thread, byref(context)):
+            kernel32.SetThreadContext(h_thread, byref(context))
+
+    def read_process_memory(self, address, length):
         
         data         = ""
         read_buf     = create_string_buffer(length)
         count        = c_ulong(0)
         
         
-        kernel32.ReadProcessMemory(self.h_process, address, read_buf, 5, byref(count))
+        if not kernel32.ReadProcessMemory(self.h_process, address, read_buf, 5, byref(count)):
+            raise WinError(get_last_error())
+
         data    = read_buf.raw
         
         return data
@@ -214,7 +224,7 @@ class debugger():
         c_data = c_char_p(data[count.value:])
 
         if not kernel32.WriteProcessMemory(self.h_process, address, c_data, length, byref(count)):
-            return False
+            raise WinError(get_last_error())
         else:
             return True
     
@@ -224,8 +234,9 @@ class debugger():
 
             # store the original byte
             old_protect = c_ulong(0)
-            kernel32.VirtualProtectEx(self.h_process, address, 1, PAGE_EXECUTE_READWRITE, byref(old_protect))
-            
+            if not kernel32.VirtualProtectEx(self.h_process, address, 1, PAGE_EXECUTE_READWRITE, byref(old_protect)):
+                raise WinError(get_last_error())
+
             original_byte = self.read_process_memory(address, 1)
             if original_byte != False:
                 
@@ -257,20 +268,20 @@ class debugger():
             # first put the original byte back
             self.write_process_memory(self.exception_address, self.breakpoints[self.exception_address])
 
-            # obtain a fresh context record, reset EIP back to the 
+            # obtain a fresh context record, reset RIP back to the
             # original byte and then set the thread's context record
-            # with the new EIP value
+            # with the new RIP value
             self.context = self.get_thread_context(h_thread=self.h_thread)
-            self.context.Eip -= 1
-            
-            kernel32.SetThreadContext(self.h_thread,byref(self.context))
-            
+            self.context.Rip -= 1
+
+            self.set_thread_context(self.h_thread, self.context)
+
             continue_status = DBG_CONTINUE
 
 
         return continue_status
 
-    def func_resolve(self,dll,function):
+    def func_resolve(self, dll, function):
         
         handle  = kernel32.GetModuleHandleA(dll)
         address = kernel32.GetProcAddress(handle, function)
@@ -327,7 +338,7 @@ class debugger():
             # Set this threads context with the debug registers
             # set
             h_thread = self.open_thread(thread_id)
-            kernel32.SetThreadContext(h_thread,byref(context))
+            self.set_thread_context(h_thread, context)
 
         # update the internal hardware breakpoint array at the used slot index.
         self.hardware_breakpoints[available] = (address,length,condition)
@@ -336,6 +347,9 @@ class debugger():
     
     def exception_handler_single_step(self):
         print "[*] Exception address: 0x%08x" % self.exception_address
+
+        print self.context.Dr6
+
         # Comment from PyDbg:
         # determine if this single step event occured in reaction to a hardware breakpoint and grab the hit breakpoint.
         # according to the Intel docs, we should be able to check for the BS flag in Dr6. but it appears that windows
@@ -388,8 +402,8 @@ class debugger():
 
             # Reset the thread's context with the breakpoint removed
             h_thread = self.open_thread(thread_id)
-            kernel32.SetThreadContext(h_thread,byref(context))
-            
+            self.set_thread_context(h_thread, context)
+
         # remove the breakpoint from the internal list.
         del self.hardware_breakpoints[slot]
 
