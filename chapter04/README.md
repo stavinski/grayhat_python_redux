@@ -3,7 +3,7 @@
 ## Pydbg to WinAppDbg
 
 In the original the [pydbg debugger](https://github.com/OpenRCE/pydbg) was used, this is a great library and I used it
-while following along with the book but I found 2 main issues:
+while following along with the book but I found 3 main issues:
 
 1. Not been maintained for a while so is lacking support for x64
 2. Bit of a hack to get it installed had to google around a bit to get it working
