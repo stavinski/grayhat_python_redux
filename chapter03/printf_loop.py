@@ -1,7 +1,9 @@
 from ctypes import *
+
+import ctypes.util
 import time
 
-msvcrt = cdll.msvcrt
+msvcrt = cdll[ctypes.util.find_msvcrt()]
 counter = 0
 
 while 1:

@@ -2,14 +2,19 @@ import struct
 import random
 import ctypes.util
 
-from winappdbg import Debug, EventHandler
+from winappdbg import Debug, EventHandler, HexDump
 
 # keep this for reference
 MSVCRT_DLL = ctypes.util.find_msvcrt()
 
 def printf_bp_handler(evt):
     thread = evt.get_thread()
-    print thread
+    counter = thread.get_register("Rdx")  # counter is on th Rdx register for x64
+    print "counter: %d" % counter
+
+    rand_counter = random.randint(1, 100)
+    #rand_counter = struct.pack("L", rand_counter)[0]
+    thread.set_register("Rdx", rand_counter)  # update to the random counter
 
 class PrintfRandomizerEventHandler(EventHandler):
 
@@ -25,7 +30,7 @@ class PrintfRandomizerEventHandler(EventHandler):
 
 pid = raw_input("Enter print_loop.py PID: ")
 
-with Debug(PrintfRandomizerEventHandler) as debug:
+with Debug(PrintfRandomizerEventHandler()) as debug:
     debug.attach(int(pid))
 
     try:
