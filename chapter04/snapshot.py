@@ -43,8 +43,6 @@ class Snapshotter(object):
                     print "[*] resuming process"
                     self.proc.resume()
 
-        self.proc.close_handle()
-
     def start(self):
         self.proc = Process(self.pid)
         self.running = True
