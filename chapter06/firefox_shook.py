@@ -1,4 +1,4 @@
-from winappdbg import Process, System, Debug, EventHandler, win32
+from winappdbg import Debug, EventHandler, win32, EventSift
 
 
 class FirefoxSoftHookEventHandler(EventHandler):
@@ -17,15 +17,16 @@ class FirefoxSoftHookEventHandler(EventHandler):
             print "[+] %s" % data
 
 
-with Debug(FirefoxSoftHookEventHandler(), bKillOnExit=False) as debug:
+handler = EventSift(FirefoxSoftHookEventHandler)
+
+with Debug(handler, bKillOnExit=False) as debug:
     found_ff = False
     debug.system.scan()
 
     for (proc, name) in debug.system.find_processes_by_filename("firefox.exe"):
         pid = proc.get_pid()
-        print "[*] found firefox: %d" % pid
         debug.attach(pid)
-        print "[*] attached debugger to: %d" % pid
+        print "[*] attached debugger to firefox: %d" % pid
         found_ff = True
 
     if found_ff:
