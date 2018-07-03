@@ -20,9 +20,10 @@ except AttributeError:
     SSIZE_T = {1:SBYTE, 2:SWORD, 4:SDWORD, 8:SQWORD}[sizeof(LPVOID)]
 
 
-PAGE_READWRITE     =     0x04
-PROCESS_ALL_ACCESS =     ( 0x000F0000 | 0x00100000 | 0xFFF )
-VIRTUAL_MEM        =     ( 0x1000 | 0x2000 )
+PAGE_EXECUTE_READWRITE = 0x00000040
+PAGE_READWRITE         = 0x04
+PROCESS_ALL_ACCESS     = ( 0x000F0000 | 0x00100000 | 0xFFF )
+VIRTUAL_MEM            = ( 0x1000 | 0x2000 )
 
 class SECURITY_ATTRIBUTES(Structure):
     _fields_ = [
