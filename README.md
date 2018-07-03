@@ -1,7 +1,8 @@
 # Gray Hat Python Redux
 
 Based off the [fantastic book](https://nostarch.com/ghpython.htm) by Justin Seitz, I wanted to bring it up to
-date using libraries that work with x64, so it can be used without having to fire up an old MS XP VM ;) 
+date to get it working on an upto date Windows 10 64 bit OS as this is realistically where these type of actions are 
+going to take place.
 
 ## Main Differences
 
@@ -14,3 +15,4 @@ date using libraries that work with x64, so it can be used without having to fir
 * [Chapter 3 - Building a Windows x64 Debugger](chapter03/)
 * [Chapter 4 - WinAppDbg a Pure Python Windows Debugger](chapter04/)
 * [Chapter 6 - Hooking](chapter06/)
+* [Chapter 7 - DLL and Code Injection](chapter07/)
