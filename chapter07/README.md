@@ -31,14 +31,4 @@ were specified the calls worked :)
 
 ## Shellcodes
 
-The shellcodes from the book as expected won't work under x64, so I used `msfvenom` to create some new ones, I had 
-to tweak them a little as when I tested them out via the compiled shell.c Windows Defender flagged the exe as a trojan! 
-Once I added a few scattered nops (\x90) in there this changed the signature enough to go undetected :)
-
-I have dropped some sample x64 exec shellcodes in:
-
-* CMD="calc.exe"
-* CMD="cmd.exe AAAAAAAAAAAAAAAAAAAAAAAAA"
-* CMD="taskkill /PID AAAAAAAAAA"
-
-So you can follow along.
+TBA
