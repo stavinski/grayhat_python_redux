@@ -51,7 +51,7 @@ user32_dll      db  'USER32.DLL', 0
 winexec_func    db  'WinExec', 0
 msgbox_func     db  'MessageBoxA', 0
 
-cmdline_str     db  'cmd.exe /c calc.exe', 0
+cmdline_str     db  'cmd.exe /c c:\windows\system32\calc.exe', 0
 hello_str       db  'Hello world', 0
 title_str       db  'Message', 0
 exitproc_func   db  'ExitProcess', 0
