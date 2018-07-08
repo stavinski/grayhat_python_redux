@@ -27,9 +27,9 @@ main proc
     xor rcx, rcx            ;hWnd (NULL)
     call rax                ;display message box
  
-    lea rdx, exitproc_func
+    lea rdx, exitthread_func
     lea rcx, kernel32_dll
-    call lookup_api         ;get address of ExitProcess
+    call lookup_api         ;get address of ExitThread
  
     xor rcx, rcx            ;exit code zero
     call rax                ;exit
@@ -42,7 +42,8 @@ user32_dll      db  'USER32.DLL', 0
 msgbox_func     db  'MessageBoxA', 0
 hello_str       db  'Hello world', 0
 title_str       db  'Message', 0
-exitproc_func   db  'ExitProcess', 0
+;exitproc_func   db  'ExitProcess', 0
+exitthread_func   db  'ExitThread', 0
  
 ;look up address of function from DLL export table
 ;rcx=DLL name string, rdx=function name string
